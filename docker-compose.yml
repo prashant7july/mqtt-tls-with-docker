@@ -2,11 +2,11 @@ version: '3.8'
 
 volumes:
   vol-emqx-data:
-    name: foo-emqx-data
+    name: vol-emqx-data
   vol-emqx-etc:
-    name: foo-emqx-etc
+    name: vol-emqx-etc
   vol-emqx-log:
-    name: foo-emqx-log
+    name: vol-emqx-log
 
 networks:
   iot:
