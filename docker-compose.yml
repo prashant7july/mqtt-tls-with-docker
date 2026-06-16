@@ -1,0 +1,100 @@
+version: '3.8'
+
+volumes:
+  vol-emqx-data:
+    name: foo-emqx-data
+  vol-emqx-etc:
+    name: foo-emqx-etc
+  vol-emqx-log:
+    name: foo-emqx-log
+
+networks:
+  iot:
+    name: iot_host
+    driver: bridge
+
+services:
+
+  emqx:
+    container_name: emqx
+    image: emqx/emqx:4.4.14
+    restart: always
+
+    ports:
+      - "18083:18083"   # Dashboard HTTP
+      - "18084:18084"   # Dashboard HTTPS
+      - "1883:1883"     # MQTT TCP
+      - "8883:8883"     # MQTT SSL/TLS
+      - "8083:8083"     # MQTT WebSocket
+      - "8084:8084"     # MQTT WebSocket SSL
+
+    volumes:
+      - vol-emqx-data:/opt/emqx/data
+      - vol-emqx-etc:/opt/emqx/etc
+      - vol-emqx-log:/opt/emqx/log
+      - ./certs:/opt/emqx/etc/certs:ro
+
+    environment:
+      EMQX_NAME: iothost-org
+      EMQX_HOST: 127.0.0.1
+
+      EMQX_DASHBOARD__DEFAULT_USER__PASSWORD: "emqxpass"
+
+      EMQX_ALLOW_ANONYMOUS: "true"
+      EMQX_NOMATCH: "allow"
+
+      # --- Dashboard HTTPS (port 18084) ---
+      EMQX_DASHBOARD__LISTENER__HTTPS: 18084
+      EMQX_DASHBOARD__LISTENER__HTTPS__ACCEPTORS: 2
+      EMQX_DASHBOARD__LISTENER__HTTPS__MAX_CLIENTS: 512
+      EMQX_DASHBOARD__LISTENER__HTTPS__KEYFILE: "etc/certs/server.key"
+      EMQX_DASHBOARD__LISTENER__HTTPS__CERTFILE: "etc/certs/server.crt"
+
+      # --- Dashboard HTTP (port 18083) ---
+      EMQX_DASHBOARD__LISTENER__HTTP__MAX_CLIENTS: 512
+
+      # --- MQTT SSL/TLS listener (port 8883) ---
+      EMQX_LISTENER__SSL__EXTERNAL__KEYFILE: "etc/certs/server.key"
+      EMQX_LISTENER__SSL__EXTERNAL__CERTFILE: "etc/certs/server.crt"
+      EMQX_LISTENER__SSL__EXTERNAL__CACERTFILE: "etc/certs/ca.crt"
+      EMQX_LISTENER__SSL__EXTERNAL__VERIFY: "verify_peer"
+      EMQX_LISTENER__SSL__EXTERNAL__FAIL_IF_NO_PEER_CERT: "false"
+      EMQX_LISTENER__SSL__EXTERNAL__MAX_CONNECTIONS: 1000
+
+      # --- MQTT WebSocket SSL (port 8084) ---
+      EMQX_LISTENER__WSS__EXTERNAL__KEYFILE: "etc/certs/server.key"
+      EMQX_LISTENER__WSS__EXTERNAL__CERTFILE: "etc/certs/server.crt"
+      EMQX_LISTENER__WSS__EXTERNAL__MAX_CONNECTIONS: 1000
+
+      # --- Plain listeners ---
+      EMQX_LISTENER__TCP__EXTERNAL__MAX_CONNECTIONS: 1000
+      EMQX_LISTENER__WS__EXTERNAL__MAX_CONNECTIONS: 1000
+
+      EMQX_LOADED_PLUGINS: "emqx_recon,emqx_retainer,emqx_management,emqx_dashboard"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:18083"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      iot:
+        aliases:
+          - emqx_host
+
+  # ── Python MQTT Tester ─────────────────────────────────────
+  mqtt-tester:
+    container_name: mqtt-tester
+    build:
+      context: ./mqtt-tester
+      dockerfile: Dockerfile
+    restart: on-failure
+    depends_on:
+      emqx:
+        condition: service_healthy
+    networks:
+      iot:
+        aliases:
+          - mqtt_tester_host
