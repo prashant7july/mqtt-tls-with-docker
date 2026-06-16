@@ -22,7 +22,8 @@ else
 fi
 
 echo -e "\n${GREEN}Starting services...${NC}"
-docker compose up -d --build
+# docker compose up -d --build
+docker compose -f docker-compose.nonetwork.yml up -d --build
 
 echo -e "\n${YELLOW}----------------------------------------${NC}"
 echo -e "${YELLOW} All services started!${NC}"

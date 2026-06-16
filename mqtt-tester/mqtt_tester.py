@@ -5,8 +5,9 @@ import random
 import threading
 from datetime import datetime
 
-BROKER   = "emqx_host"
-# BROKER   = "emqx" only in case of when network is default and both tester and broker are in same container network. Otherwise, use the actual hostname or IP address of the EMQX broker.
+# BROKER   = "emqx_host"
+# Only in case of when network is default and both tester and broker are in same container network. Otherwise, use the actual hostname or IP address of the EMQX broker.
+BROKER   = "emqx" 
 PORT     = 1883
 TOPIC_SUB = "test/#"
 TOPICS_PUB = [
